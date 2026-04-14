@@ -1,0 +1,6 @@
+# Robot Python (linker) — image légère, publiée à côté de l’app web sur GHCR.
+# Contexte de build : racine du dépôt (comme le Dockerfile principal).
+FROM python:3.12-alpine
+WORKDIR /opt/linker
+COPY linker/robot.py ./robot.py
+CMD ["python3", "-u", "robot.py"]

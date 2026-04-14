@@ -1,0 +1,16 @@
+{
+  "name": "@exparta/internal-mcp",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Serveur MCP interne pour exposer l'application à une IA (Ollama / clients MCP). Arborescence séparée du package Next.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "node --import tsx src/index.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

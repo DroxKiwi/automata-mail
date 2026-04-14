@@ -1,0 +1,24 @@
+# Fichier d’override local (ex. `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`).
+# Postgres en build local / ports exposés — à adapter selon ton flux.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: test-system-redirect-mail-exparta-db
+    restart: unless-stopped
+    ports:
+      - 5788:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test-system-redirect-mail-exparta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d test-system-redirect-mail-exparta"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

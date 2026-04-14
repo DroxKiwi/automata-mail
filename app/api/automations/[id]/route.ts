@@ -1,0 +1,153 @@
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth";
+import { validateActions, type ActionInput } from "@/lib/rules/rules-payload";
+import { MergeFiltersError } from "@/lib/automation/merge-filters-for-rule";
+import {
+  deleteAutomationCascade,
+  updateAutomationWithMaterializedRule,
+} from "@/lib/automation/sync-materialized-rule";
+import { prisma } from "@/lib/db/prisma";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(_request: Request, context: RouteContext) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
+
+  const { id: raw } = await context.params;
+  const id = Number.parseInt(raw, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return NextResponse.json({ error: "ID invalide." }, { status: 400 });
+  }
+
+  const automation = await prisma.automation.findUnique({
+    where: { id },
+    include: {
+      filterLinks: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          filter: { select: { id: true, name: true } },
+        },
+      },
+      rule: {
+        include: {
+          actions: { orderBy: { order: "asc" } },
+        },
+      },
+    },
+  });
+
+  if (!automation) {
+    return NextResponse.json({ error: "Automatisation introuvable." }, { status: 404 });
+  }
+
+  return NextResponse.json({ automation });
+}
+
+export async function PATCH(request: Request, context: RouteContext) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
+
+  const { id: raw } = await context.params;
+  const id = Number.parseInt(raw, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return NextResponse.json({ error: "ID invalide." }, { status: 400 });
+  }
+
+  const existing = await prisma.automation.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Automatisation introuvable." }, { status: 404 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalide." }, { status: 400 });
+  }
+
+  if (typeof body !== "object" || body === null) {
+    return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
+  }
+
+  const b = body as Record<string, unknown>;
+
+  const name = typeof b.name === "string" ? b.name.trim() : "";
+  if (!name) {
+    return NextResponse.json({ error: "Nom de l automatisation requis." }, { status: 400 });
+  }
+
+  const description =
+    typeof b.description === "string" ? b.description.trim() || null : null;
+  const enabled = b.enabled !== false;
+  const priority =
+    typeof b.priority === "number" && Number.isFinite(b.priority)
+      ? Math.floor(b.priority)
+      : 100;
+  const stopProcessing = b.stopProcessing !== false;
+
+  const rawIds = Array.isArray(b.filterIds) ? b.filterIds : [];
+  const filterIds = rawIds
+    .map((x) => (typeof x === "number" ? x : Number(x)))
+    .filter((x) => Number.isFinite(x) && x >= 1);
+
+  if (filterIds.length === 0) {
+    return NextResponse.json(
+      { error: "Ajoute au moins un filtre en entree." },
+      { status: 400 },
+    );
+  }
+
+  const actions = Array.isArray(b.actions) ? (b.actions as ActionInput[]) : [];
+  const actErr = validateActions(actions);
+  if (actErr) {
+    return NextResponse.json({ error: actErr }, { status: 400 });
+  }
+
+  try {
+    const { ruleId } = await updateAutomationWithMaterializedRule(id, {
+      name,
+      description,
+      enabled,
+      priority,
+      stopProcessing,
+      filterIds,
+      actions,
+    });
+    return NextResponse.json({ ok: true, automationId: id, ruleId });
+  } catch (e) {
+    if (e instanceof MergeFiltersError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
+  }
+
+  const { id: raw } = await context.params;
+  const id = Number.parseInt(raw, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return NextResponse.json({ error: "ID invalide." }, { status: 400 });
+  }
+
+  try {
+    await deleteAutomationCascade(id);
+  } catch {
+    return NextResponse.json({ error: "Automatisation introuvable." }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
+}

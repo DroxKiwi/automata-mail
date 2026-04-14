@@ -1,0 +1,84 @@
+# Stack : Postgres + images GHCR web + worker (workflow .github/workflows/docker-publish.yml, latest sur main).
+# En prod : copiez seulement ce fichier + un .env ; `docker compose pull && docker compose up -d` (pas besoin du repo).
+# Chemin d’image = même couple owner/repo que GitHub, en minuscules (ex. DroxKiwi/... → ghcr.io/droxkiwi/...).
+#
+# Fork : remplace droxkiwi dans `image:` ci-dessous par ton compte ou organisation GitHub.
+#
+# Démarrage : docker compose pull && docker compose up -d
+# (secrets : DATABASE_URL si Postgres externe, INBOUND_SECRET, FIRST_SETUP_TOKEN,
+#  WORKER_TRIGGER_SECRET pour le robot — voir .env.example)
+#
+# URLs :
+#   - Application     : http://localhost:3000
+#   - Postgres (hôte) : localhost:5788 → 5432 dans le réseau compose
+#   - Robot Python    : service `worker`, appelle l’API interne sur http://web:3000
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mail-exparta-db
+    restart: unless-stopped
+    ports:
+      - "5788:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test-system-redirect-mail-exparta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d test-system-redirect-mail-exparta",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: ghcr.io/droxkiwi/automata-mail:latest
+    container_name: mail-exparta-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/test-system-redirect-mail-exparta
+      # URL publique https://… (OAuth / exemples). Optionnel si le proxy envoie Host / X-Forwarded-*.
+      BASE_URL: ${BASE_URL:-}
+      INBOUND_SECRET: ${INBOUND_SECRET:-change-me-inbound}
+      FIRST_SETUP_TOKEN: ${FIRST_SETUP_TOKEN:-change-me-setup}
+      WORKER_TRIGGER_SECRET: ${WORKER_TRIGGER_SECRET:-change-me-worker-trigger}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok||r.status===307?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
+
+  # Image GHCR : robot.py est déjà dedans. Ne montez PAS ./linker ici — un volume vide
+  # écrase /opt/linker et provoque « can't open file ... robot.py ».
+  worker:
+    image: ghcr.io/droxkiwi/automata-mail-worker:latest
+    container_name: mail-exparta-worker
+    restart: unless-stopped
+    environment:
+      WORKER_TRIGGER_SECRET: ${WORKER_TRIGGER_SECRET:-change-me-worker-trigger}
+      NEXT_APP_BASE_URL: http://web:3000
+      INTERVAL_SECONDS: ${INTERVAL_SECONDS:-60}
+      TRIGGER_PATH: ${TRIGGER_PATH:-/api/internal/worker/trigger/tick}
+      PROCESS_LIMIT: ${PROCESS_LIMIT:-}
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
