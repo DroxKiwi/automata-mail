@@ -28,6 +28,8 @@ export type ListPageToolbarProps = {
   /** Libellé accessibilité pour la zone pagination */
   paginationAriaLabel?: string;
   className?: string;
+  /** Si true, les bordures sont visibles uniquement au hover. */
+  hoverBordersOnly?: boolean;
 };
 
 /**
@@ -39,6 +41,7 @@ export function ListPageToolbar({
   pagination,
   paginationAriaLabel = "Pagination",
   className,
+  hoverBordersOnly = true,
 }: ListPageToolbarProps) {
   const { page, totalPages, prevHref, nextHref, perPage } = pagination;
   const safePage = Math.min(Math.max(1, page), Math.max(1, totalPages));
@@ -46,7 +49,8 @@ export function ListPageToolbar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-lg border border-border bg-muted/25 px-3 py-3 shadow-xs md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-4 md:gap-y-2",
+        "flex flex-col gap-3 rounded-lg border bg-muted/25 px-3 py-3 shadow-xs md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-x-4 md:gap-y-2",
+        hoverBordersOnly ? "border-transparent hover:border-border" : "border-border",
         className,
       )}
     >
@@ -66,7 +70,12 @@ export function ListPageToolbar({
       >
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground sm:text-sm">Par page</span>
-          <div className="inline-flex rounded-md border border-border bg-background/80 p-0.5">
+          <div
+            className={cn(
+              "inline-flex rounded-md border bg-background/80 p-0.5 transition-colors",
+              hoverBordersOnly ? "border-transparent hover:border-border" : "border-border",
+            )}
+          >
             {perPage.options.map((n) => (
               <Link
                 key={n}
@@ -88,12 +97,20 @@ export function ListPageToolbar({
           {prevHref ? (
             <Link
               href={prevHref}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
+              className={cn(
+                "inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted transition-colors",
+                hoverBordersOnly ? "border-transparent hover:border-border" : "border-border",
+              )}
             >
               Précédent
             </Link>
           ) : (
-            <span className="inline-flex h-9 cursor-not-allowed items-center justify-center rounded-md border border-border/50 bg-muted/30 px-3 text-sm text-muted-foreground">
+            <span
+              className={cn(
+                "inline-flex h-9 cursor-not-allowed items-center justify-center rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground",
+                hoverBordersOnly ? "border-transparent" : "border-border/50",
+              )}
+            >
               Précédent
             </span>
           )}
@@ -103,12 +120,20 @@ export function ListPageToolbar({
           {nextHref ? (
             <Link
               href={nextHref}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
+              className={cn(
+                "inline-flex h-9 items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted transition-colors",
+                hoverBordersOnly ? "border-transparent hover:border-border" : "border-border",
+              )}
             >
               Suivant
             </Link>
           ) : (
-            <span className="inline-flex h-9 cursor-not-allowed items-center justify-center rounded-md border border-border/50 bg-muted/30 px-3 text-sm text-muted-foreground">
+            <span
+              className={cn(
+                "inline-flex h-9 cursor-not-allowed items-center justify-center rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground",
+                hoverBordersOnly ? "border-transparent" : "border-border/50",
+              )}
+            >
               Suivant
             </span>
           )}

@@ -31,8 +31,8 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  await ensureAppMailboxSettingsRow();
-  const activeProvider = await getActiveCloudProvider();
+  await ensureAppMailboxSettingsRow(user.id);
+  const activeProvider = await getActiveCloudProvider(user.id);
 
   return NextResponse.json({
     activeProvider,
@@ -65,8 +65,8 @@ export async function POST(request: Request) {
     );
   }
 
-  await ensureAppMailboxSettingsRow();
-  const current = await getActiveCloudProvider();
+  await ensureAppMailboxSettingsRow(user.id);
+  const current = await getActiveCloudProvider(user.id);
 
   if (current === next) {
     return NextResponse.json({ ok: true, activeProvider: current, wiped: false });
@@ -85,19 +85,19 @@ export async function POST(request: Request) {
   }
 
   if (needsWipe) {
-    await wipeAllMailAppData();
+    await wipeAllMailAppData(user.id);
     await prisma.googleOAuthSettings.update({
-      where: { id: 1 },
+      where: { userId: user.id },
       data: { refreshToken: null },
     });
     await prisma.outlookOAuthSettings.update({
-      where: { id: 1 },
+      where: { userId: user.id },
       data: { refreshToken: null },
     });
   }
 
   await prisma.appMailboxSettings.update({
-    where: { id: 1 },
+    where: { userId: user.id },
     data: { activeProvider: next },
   });
 

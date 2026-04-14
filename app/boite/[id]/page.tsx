@@ -62,6 +62,7 @@ export default async function BoiteMessagePage(props: PageProps) {
     prisma.inboundMessage.findFirst({
       where: {
         id,
+        userId: user.id,
         inboundAddress: { isActive: true },
       },
       include: {
@@ -70,11 +71,11 @@ export default async function BoiteMessagePage(props: PageProps) {
       } as unknown as Prisma.InboundMessageInclude,
     }),
     prisma.googleOAuthSettings.findUnique({
-      where: { id: 1 },
+      where: { userId: user.id },
       select: { gmailMarkReadOnOpen: true },
     }),
     prisma.outlookOAuthSettings.findUnique({
-      where: { id: 1 },
+      where: { userId: user.id },
       select: { outlookMarkReadOnOpen: true },
     }),
   ]);

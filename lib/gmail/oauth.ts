@@ -8,13 +8,13 @@ export const GMAIL_OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify",
 ] as const;
 
-export async function getGmailOAuth2ConfigFromDb(): Promise<{
+export async function getGmailOAuth2ConfigFromDb(userId: number): Promise<{
   clientId: string;
   clientSecret: string;
   redirectUri: string;
 } | null> {
   const row = await prisma.googleOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
   });
   if (!row) {
     return null;
@@ -31,8 +31,8 @@ export async function getGmailOAuth2ConfigFromDb(): Promise<{
 /**
  * Client OAuth2 Google configuré depuis la base (Réglages).
  */
-export async function getGmailOAuth2Client() {
-  const cfg = await getGmailOAuth2ConfigFromDb();
+export async function getGmailOAuth2Client(userId: number) {
+  const cfg = await getGmailOAuth2ConfigFromDb(userId);
   if (!cfg) {
     throw new Error(
       "Gmail OAuth non configure : renseigne l'ID client, le secret et l'URI de redirection dans Reglages."
@@ -44,20 +44,20 @@ export async function getGmailOAuth2Client() {
 /**
  * Client Gmail API avec refresh token stocké en base.
  */
-export async function getGmailClientFromDb() {
-  const provider = await getActiveCloudProvider();
+export async function getGmailClientFromDb(userId: number) {
+  const provider = await getActiveCloudProvider(userId);
   if (provider !== CloudMailboxProvider.GOOGLE) {
     return null;
   }
   const row = await prisma.googleOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
     select: { refreshToken: true },
   });
   const refreshToken = row?.refreshToken?.trim();
   if (!refreshToken) {
     return null;
   }
-  const oauth2 = await getGmailOAuth2Client();
+  const oauth2 = await getGmailOAuth2Client(userId);
   oauth2.setCredentials({ refresh_token: refreshToken });
   return google.gmail({ version: "v1", auth: oauth2 });
 }

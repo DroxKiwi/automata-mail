@@ -3,7 +3,7 @@ import { runAssistantAgentLoopStreaming } from "@/lib/assistant/agent-loop";
 import type { AgentStreamEvent } from "@/lib/assistant/agent-stream-events";
 import { assistantRequestOriginError } from "@/lib/assistant/request-guard";
 import { getSessionUser } from "@/lib/auth";
-import { getOllamaConfig } from "@/lib/ollama/ollama-config";
+import { getOllamaConfigForChat } from "@/lib/ollama/ollama-config";
 
 const NDJSON_TYPE = "application/x-ndjson; charset=utf-8";
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const cfg = await getOllamaConfig();
+  const cfg = await getOllamaConfigForChat(user.id);
   if (!cfg?.model) {
     return new Response(
       JSON.stringify({

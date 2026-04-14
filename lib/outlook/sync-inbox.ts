@@ -50,13 +50,13 @@ function resolveMailFromForStorage(parsed: {
   return "unknown@invalid";
 }
 
-async function ensureOutlookInboundAddressId(): Promise<number> {
+async function ensureOutlookInboundAddressId(userId: number): Promise<number> {
   const key = {
     localPart: OUTLOOK_SYNC_LOCAL,
     domain: OUTLOOK_SYNC_DOMAIN,
   };
   const existing = await prisma.inboundAddress.findUnique({
-    where: { localPart_domain: key },
+    where: { userId_localPart_domain: { userId, ...key } },
   });
   if (existing) {
     return existing.id;
@@ -66,13 +66,14 @@ async function ensureOutlookInboundAddressId(): Promise<number> {
       data: {
         localPart: key.localPart,
         domain: key.domain,
+        userId,
         isActive: true,
       },
     });
     return created.id;
   } catch {
     const retry = await prisma.inboundAddress.findUnique({
-      where: { localPart_domain: key },
+      where: { userId_localPart_domain: { userId, ...key } },
     });
     if (retry) {
       return retry.id;
@@ -112,8 +113,8 @@ async function graphGetJson(
 /**
  * Importe les messages Outlook (Graph) absents en base (dédup par outlookMessageId).
  */
-export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
-  const accessToken = await getOutlookAccessTokenFromDb();
+export async function syncOutlookToBoite(userId: number): Promise<OutlookSyncResult> {
+  const accessToken = await getOutlookAccessTokenFromDb(userId);
   if (!accessToken) {
     return {
       ok: false,
@@ -122,7 +123,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
   }
 
   const settings = await prisma.outlookOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
     select: { outlookSyncUnreadOnly: true },
   });
   const unreadOnly = settings?.outlookSyncUnreadOnly !== false;
@@ -161,7 +162,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
     .map((r) => r.id)
     .filter((id): id is string => Boolean(id));
   const already = await prisma.inboundMessage.findMany({
-    where: { outlookMessageId: { in: graphIds } },
+    where: { userId, outlookMessageId: { in: graphIds } },
     select: { outlookMessageId: true },
   });
   const alreadySet = new Set(
@@ -170,7 +171,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
       .filter((id): id is string => Boolean(id))
   );
 
-  const inboundAddressId = await ensureOutlookInboundAddressId();
+  const inboundAddressId = await ensureOutlookInboundAddressId(userId);
 
   let imported = 0;
   let skippedAlready = alreadySet.size;
@@ -186,7 +187,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
     if (alreadySet.has(graphId)) {
       try {
         await prisma.inboundMessage.updateMany({
-          where: { outlookMessageId: graphId },
+          where: { userId, outlookMessageId: graphId },
           data: { readAt },
         });
       } catch {
@@ -235,6 +236,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
       const message = await prisma.inboundMessage.create({
         data: {
           inboundAddressId,
+          userId,
           outlookMessageId: graphId,
           correlationId,
           messageIdHeader: parsed.messageIdHeader,
@@ -265,6 +267,7 @@ export async function syncOutlookToBoite(): Promise<OutlookSyncResult> {
       }
 
       await mailFlowLogSafe({
+        userId,
         correlationId,
         actor: "next",
         step: "outlook_inbox_imported",

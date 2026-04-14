@@ -5,6 +5,7 @@ import packageJson from "../../package.json";
 import { OllamaBuddy } from "@/components/assistant/ollama-buddy";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { TutorialStartButton } from "@/components/tutorial";
+import { cn } from "@/lib/utils";
 
 type DashboardTab =
   | "automate"
@@ -27,6 +28,8 @@ type DashboardShellProps = {
   contentFrame?: boolean;
   /** Actions à droite du titre (ex. bouton secondaire). */
   titleActions?: ReactNode;
+  /** Bordures visibles uniquement au survol (test de charte). */
+  hoverBorders?: boolean;
   /**
    * Bandeau sous le titre (filtres, pagination, etc.) — pleine largeur sous la ligne titre.
    */
@@ -36,10 +39,10 @@ type DashboardShellProps = {
 
 function tabClass(isActive: boolean): string {
   if (isActive) {
-    return "bg-primary text-primary-foreground";
+    return "border border-transparent bg-primary text-primary-foreground hover:border-border";
   }
 
-  return "text-muted-foreground hover:bg-muted hover:text-foreground";
+  return "border border-transparent text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground";
 }
 
 export function DashboardShell({
@@ -49,12 +52,18 @@ export function DashboardShell({
   isAdmin = false,
   contentFrame = true,
   titleActions,
+  hoverBorders = true,
   headerToolbar,
   children,
 }: DashboardShellProps) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-24 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar px-2 py-4 md:w-80 md:px-5">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-24 flex-col overflow-y-auto border-r bg-sidebar px-2 py-4 md:w-80 md:px-5",
+          hoverBorders ? "border-r-transparent hover:border-r-sidebar-border" : "border-r-sidebar-border",
+        )}
+      >
         <div className="mb-5 flex flex-col gap-1.5">
           <div className="flex justify-center md:justify-start">
             <Link
@@ -163,9 +172,26 @@ export function DashboardShell({
           ) : null}
         </nav>
 
-        <div className="mt-auto flex w-full min-w-0 flex-col gap-3 border-t border-sidebar-border pt-4">
-          <TutorialStartButton />
-          <div className="rounded-lg border border-sidebar-border bg-card p-3">
+        <div
+          className={cn(
+            "mt-auto flex w-full min-w-0 flex-col gap-3 border-t pt-4 transition-colors",
+            hoverBorders ? "border-t-transparent hover:border-t-sidebar-border" : "border-t-sidebar-border",
+          )}
+        >
+          <div
+            className={cn(
+              "rounded-lg border p-1 transition-colors",
+              hoverBorders ? "border-transparent hover:border-sidebar-border" : "border-sidebar-border",
+            )}
+          >
+            <TutorialStartButton />
+          </div>
+          <div
+            className={cn(
+              "rounded-lg border bg-card p-3 transition-colors",
+              hoverBorders ? "border-transparent hover:border-sidebar-border" : "border-sidebar-border",
+            )}
+          >
             <p className="text-sm font-semibold">Mon profil</p>
             <p className="mt-1 break-all text-xs text-muted-foreground" title={userEmail}>
               {userEmail}
@@ -189,7 +215,12 @@ export function DashboardShell({
             {headerToolbar ? <div className="min-w-0">{headerToolbar}</div> : null}
           </div>
           {contentFrame ? (
-            <section className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs md:p-6">
+            <section
+              className={cn(
+                "rounded-lg border bg-card p-4 text-card-foreground shadow-xs transition-colors md:p-6",
+                hoverBorders ? "border-transparent hover:border-border" : "border-border",
+              )}
+            >
               {children}
             </section>
           ) : (
@@ -197,12 +228,17 @@ export function DashboardShell({
           )}
         </main>
 
-        <footer className="border-t border-border bg-secondary px-4 py-3 text-center text-sm text-secondary-foreground">
+        <footer
+          className={cn(
+            "border-t bg-secondary px-4 py-3 text-center text-sm text-secondary-foreground transition-colors",
+            hoverBorders ? "border-t-transparent hover:border-t-border" : "border-t-border",
+          )}
+        >
           Exparta Automata Mail — routage et règles de messagerie professionnelle
         </footer>
       </div>
 
-      <OllamaBuddy />
+      <OllamaBuddy userScopeKey={userEmail} />
     </div>
   );
 }

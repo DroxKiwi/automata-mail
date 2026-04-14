@@ -13,9 +13,9 @@ export type ResolvedOutboundSmtp = {
  * Configuration SMTP sortante : uniquement la ligne `SmtpOutboundSettings` (id = 1).
  * À renseigner dans Réglages (base de données).
  */
-export async function getOutboundSmtpConfig(): Promise<ResolvedOutboundSmtp | null> {
+export async function getOutboundSmtpConfig(userId: number): Promise<ResolvedOutboundSmtp | null> {
   const row = await prisma.smtpOutboundSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
   });
 
   const host = row?.host?.trim() ?? "";

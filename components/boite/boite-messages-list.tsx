@@ -25,6 +25,7 @@ type BoiteMessagesListProps = {
   /** Bouton retirer de l’onglet Traité (colonne de droite). */
   showHideFromTransferListAction?: boolean;
   transferShortcuts?: TransferShortcutItem[];
+  hoverBordersOnly?: boolean;
 };
 
 export function BoiteMessagesList({
@@ -37,6 +38,7 @@ export function BoiteMessagesList({
   showTransferAction = false,
   showHideFromTransferListAction = false,
   transferShortcuts = [],
+  hoverBordersOnly = true,
 }: BoiteMessagesListProps) {
   if (messages.length === 0) {
     return (
@@ -52,13 +54,16 @@ export function BoiteMessagesList({
   return (
     <TooltipProvider>
       <ul
-        className="overflow-hidden rounded-lg border border-border text-sm"
+        className={`overflow-hidden rounded-lg border text-sm transition-colors ${
+          hoverBordersOnly ? "border-transparent hover:border-border" : "border-border"
+        }`}
         aria-label={listAriaLabel}
       >
         {messages.map((m) => (
           <BoiteMessageRow
             key={m.id}
             m={m}
+            hoverBordersOnly={hoverBordersOnly}
             showArchiveAction={showArchiveAction}
             showUnarchiveAction={showUnarchiveAction}
             showTransferAction={showTransferAction}

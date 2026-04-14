@@ -97,9 +97,11 @@ export type BoiteInboxListExtras = {
 
 /** Boîte de réception : non archivés et sans aucune trace de traitement. */
 export function boiteInboxWhere(
+  userId: number,
   extras?: BoiteInboxListExtras,
 ): Prisma.InboundMessageWhereInput {
   return {
+    userId,
     archived: false,
     inboundAddress: { isActive: true },
     AND: [
@@ -162,18 +164,20 @@ export function boiteInboxListHref(input: {
 }
 
 export async function countBoiteMessages(
+  userId: number,
   extras?: BoiteInboxListExtras,
 ): Promise<number> {
-  return prisma.inboundMessage.count({ where: boiteInboxWhere(extras) });
+  return prisma.inboundMessage.count({ where: boiteInboxWhere(userId, extras) });
 }
 
 export async function loadBoiteMessages(
+  userId: number,
   options?: { skip?: number; take?: number; extras?: BoiteInboxListExtras },
 ): Promise<BoiteListMessage[]> {
   const skip = options?.skip ?? 0;
   const take = options?.take ?? 150;
   return (await prisma.inboundMessage.findMany({
-    where: boiteInboxWhere(options?.extras),
+    where: boiteInboxWhere(userId, options?.extras),
     orderBy: { receivedAt: "desc" },
     skip,
     take,
@@ -185,10 +189,11 @@ export async function loadBoiteMessages(
  * Même critère que la page `app/boite/[id]/page.tsx` : évite une navigation vers un 404.
  */
 export async function inboundMessageExistsForBoiteDetail(
+  userId: number,
   id: number,
 ): Promise<boolean> {
   const row = await prisma.inboundMessage.findFirst({
-    where: { id, inboundAddress: { isActive: true } },
+    where: { id, userId, inboundAddress: { isActive: true } },
     select: { id: true },
   });
   return row != null;
@@ -198,9 +203,13 @@ export async function inboundMessageExistsForBoiteDetail(
  * Messages traités : archivés, ou avec transfert / trace d’action (règle, raccourci, etc.).
  * Non retirés de la liste par l’utilisateur.
  */
-export async function loadTraiteMessages(take = 150): Promise<BoiteListMessage[]> {
+export async function loadTraiteMessages(
+  userId: number,
+  take = 150,
+): Promise<BoiteListMessage[]> {
   return (await prisma.inboundMessage.findMany({
     where: {
+      userId,
       inboundAddress: { isActive: true },
       hiddenFromTransferList: false,
       OR: [

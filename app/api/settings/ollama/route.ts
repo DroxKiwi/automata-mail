@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { getOllamaConfigForChat } from "@/lib/ollama/ollama-config";
 
 function isValidHttpUrl(s: string): boolean {
   try {
@@ -22,8 +23,17 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
+  if (!user.isAdmin) {
+    const cfg = await getOllamaConfigForChat(user.id);
+    return NextResponse.json({
+      baseUrl: cfg?.baseUrl ?? "",
+      hasApiKey: Boolean(cfg?.apiKey),
+      model: cfg?.model ?? "",
+    });
+  }
+
   const row = await prisma.ollamaSettings.findUnique({
-    where: { id: 1 },
+    where: { userId: user.id },
   });
 
   if (!row) {
@@ -32,16 +42,14 @@ export async function GET() {
       hasApiKey: false,
       model: "",
     };
-    return user.isAdmin
-      ? NextResponse.json({
-          ...empty,
-          assistantThinkingEnabled: false,
-          assistantOptionsEnabled: true,
-          assistantTemperature: 1,
-          assistantTopP: 0.95,
-          assistantTopK: 64,
-        })
-      : NextResponse.json(empty);
+    return NextResponse.json({
+      ...empty,
+      assistantThinkingEnabled: false,
+      assistantOptionsEnabled: true,
+      assistantTemperature: 1,
+      assistantTopP: 0.95,
+      assistantTopK: 64,
+    });
   }
 
   const base = {
@@ -49,10 +57,6 @@ export async function GET() {
     hasApiKey: Boolean(row.apiKey?.trim()),
     model: row.model ?? "",
   };
-
-  if (!user.isAdmin) {
-    return NextResponse.json(base);
-  }
 
   return NextResponse.json({
     ...base,
@@ -210,9 +214,9 @@ export async function PUT(request: Request) {
   }
 
   await prisma.ollamaSettings.upsert({
-    where: { id: 1 },
+    where: { userId: user.id },
     create: {
-      id: 1,
+      userId: user.id,
       baseUrl,
       apiKey: nextApiKey === undefined ? null : nextApiKey,
       model: nextModel ?? "",

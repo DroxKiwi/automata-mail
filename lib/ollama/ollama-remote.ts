@@ -5,8 +5,8 @@ const TAGS_TIMEOUT_MS = 15_000;
 /**
  * Interroge le serveur Ollama configuré : GET /api/tags, retourne les noms de modèles.
  */
-export async function fetchOllamaModelNames(): Promise<string[]> {
-  const cfg = await getOllamaConfig();
+export async function fetchOllamaModelNames(userId: number): Promise<string[]> {
+  const cfg = await getOllamaConfig(userId);
   if (!cfg) {
     throw new Error("OLLAMA_NOT_CONFIGURED");
   }

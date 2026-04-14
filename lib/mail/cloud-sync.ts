@@ -16,10 +16,23 @@ export type CloudSyncResult =
 /**
  * Synchronise la boîte cloud selon le fournisseur actif (Réglages).
  */
-export async function runCloudInboxSync(): Promise<CloudSyncResult> {
-  const provider = await getActiveCloudProvider();
+export async function runCloudInboxSync(userId?: number): Promise<CloudSyncResult> {
+  const ownerId =
+    userId ??
+    (
+      await import("@/lib/db/prisma").then(({ prisma }) =>
+        prisma.user.findFirst({
+          orderBy: [{ isAdmin: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+          select: { id: true },
+        }),
+      )
+    )?.id;
+  if (!ownerId) {
+    return { ok: false, error: "Aucun utilisateur disponible pour la synchronisation." };
+  }
+  const provider = await getActiveCloudProvider(ownerId);
   if (provider === CloudMailboxProvider.GOOGLE) {
-    const r = await syncGmailToBoite();
+    const r = await syncGmailToBoite(ownerId);
     if (!r.ok) {
       return { ok: false, error: r.error };
     }
@@ -32,7 +45,7 @@ export async function runCloudInboxSync(): Promise<CloudSyncResult> {
     };
   }
   if (provider === CloudMailboxProvider.OUTLOOK) {
-    const r = await syncOutlookToBoite();
+    const r = await syncOutlookToBoite(ownerId);
     if (!r.ok) {
       return { ok: false, error: r.error };
     }

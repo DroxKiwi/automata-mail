@@ -62,13 +62,13 @@ function resolveMailFromForStorage(parsed: {
   return "unknown@invalid";
 }
 
-async function ensureGmailInboundAddressId(): Promise<number> {
+async function ensureGmailInboundAddressId(userId: number): Promise<number> {
   const key = {
     localPart: GMAIL_SYNC_LOCAL,
     domain: GMAIL_SYNC_DOMAIN,
   };
   const existing = await prisma.inboundAddress.findUnique({
-    where: { localPart_domain: key },
+    where: { userId_localPart_domain: { userId, ...key } },
   });
   if (existing) {
     return existing.id;
@@ -78,13 +78,14 @@ async function ensureGmailInboundAddressId(): Promise<number> {
       data: {
         localPart: key.localPart,
         domain: key.domain,
+        userId,
         isActive: true,
       },
     });
     return created.id;
   } catch {
     const retry = await prisma.inboundAddress.findUnique({
-      where: { localPart_domain: key },
+      where: { userId_localPart_domain: { userId, ...key } },
     });
     if (retry) {
       return retry.id;
@@ -106,14 +107,14 @@ export type GmailSyncResult =
  * Importe les messages Gmail absents en base (dédup par gmailMessageId).
  * Requête list : non lus uniquement ou toute la boîte (réglage `gmailSyncUnreadOnly`).
  */
-export async function syncGmailToBoite(): Promise<GmailSyncResult> {
-  const gmail = await getGmailClientFromDb();
+export async function syncGmailToBoite(userId: number): Promise<GmailSyncResult> {
+  const gmail = await getGmailClientFromDb(userId);
   if (!gmail) {
     return { ok: false, error: "Gmail non connecte (refresh token manquant)." };
   }
 
   const settings = await prisma.googleOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
     select: { gmailSyncUnreadOnly: true },
   });
   const listQuery =
@@ -138,14 +139,14 @@ export async function syncGmailToBoite(): Promise<GmailSyncResult> {
 
   const gmailIds = refs.map((r) => r.id).filter((id): id is string => Boolean(id));
   const already = await prisma.inboundMessage.findMany({
-    where: { gmailMessageId: { in: gmailIds } },
+    where: { userId, gmailMessageId: { in: gmailIds } },
     select: { gmailMessageId: true },
   });
   const alreadySet = new Set(
     already.map((a) => a.gmailMessageId).filter((id): id is string => Boolean(id))
   );
 
-  const inboundAddressId = await ensureGmailInboundAddressId();
+  const inboundAddressId = await ensureGmailInboundAddressId(userId);
 
   let imported = 0;
   let skippedAlready = alreadySet.size;
@@ -161,7 +162,7 @@ export async function syncGmailToBoite(): Promise<GmailSyncResult> {
         });
         const readAt = readAtFromGmailMessage(metaOnly);
         await prisma.inboundMessage.updateMany({
-          where: { gmailMessageId: gmailId },
+          where: { userId, gmailMessageId: gmailId },
           data: { readAt },
         });
       } catch {
@@ -242,6 +243,7 @@ export async function syncGmailToBoite(): Promise<GmailSyncResult> {
       const message = await prisma.inboundMessage.create({
         data: {
           inboundAddressId,
+          userId,
           gmailMessageId: gmailId,
           correlationId,
           messageIdHeader: parsed.messageIdHeader,
@@ -271,6 +273,7 @@ export async function syncGmailToBoite(): Promise<GmailSyncResult> {
       }
 
       await mailFlowLogSafe({
+        userId,
         correlationId,
         actor: "next",
         step: "gmail_inbox_imported",

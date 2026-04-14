@@ -11,6 +11,7 @@ export async function GET() {
   }
 
   const filters = await prisma.filter.findMany({
+    where: { userId: user.id },
     orderBy: [{ priority: "asc" }, { id: "asc" }],
     select: {
       id: true,
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     }
     inboundAddressId = id;
     const addr = await prisma.inboundAddress.findFirst({
-      where: { id, isActive: true },
+      where: { id, userId: user.id, isActive: true },
       select: { id: true },
     });
     if (!addr) {
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
 
   const filter = await prisma.filter.create({
     data: {
+      userId: user.id,
       inboundAddressId,
       name,
       description,

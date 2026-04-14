@@ -17,6 +17,7 @@ export function dedupeFilterIdsPreserveOrder(filterIds: number[]): number[] {
 }
 
 export async function createAutomationWithMaterializedRule(input: {
+  userId: number;
   name: string;
   description: string | null;
   enabled: boolean;
@@ -26,7 +27,7 @@ export async function createAutomationWithMaterializedRule(input: {
   actions: ActionInput[];
 }): Promise<{ automationId: number; ruleId: number }> {
   const filterIds = dedupeFilterIdsPreserveOrder(input.filterIds);
-  const merged = await buildMergedConditionsFromFilterIds(filterIds);
+  const merged = await buildMergedConditionsFromFilterIds(input.userId, filterIds);
   const actionCreates = input.actions.map((a) => ({
     type: a.type,
     order: a.order,
@@ -36,6 +37,7 @@ export async function createAutomationWithMaterializedRule(input: {
   return prisma.$transaction(async (tx) => {
     const automation = await tx.automation.create({
       data: {
+        userId: input.userId,
         name: input.name,
         description: input.description,
         enabled: input.enabled,
@@ -52,6 +54,7 @@ export async function createAutomationWithMaterializedRule(input: {
 
     const rule = await tx.rule.create({
       data: {
+        userId: input.userId,
         automationId: automation.id,
         name: input.name,
         enabled: input.enabled,
@@ -69,6 +72,7 @@ export async function createAutomationWithMaterializedRule(input: {
 }
 
 export async function updateAutomationWithMaterializedRule(
+  userId: number,
   automationId: number,
   input: {
     name: string;
@@ -81,7 +85,7 @@ export async function updateAutomationWithMaterializedRule(
   }
 ): Promise<{ ruleId: number }> {
   const filterIds = dedupeFilterIdsPreserveOrder(input.filterIds);
-  const merged = await buildMergedConditionsFromFilterIds(filterIds);
+  const merged = await buildMergedConditionsFromFilterIds(userId, filterIds);
   const actionCreates = input.actions.map((a) => ({
     type: a.type,
     order: a.order,
@@ -89,8 +93,8 @@ export async function updateAutomationWithMaterializedRule(
   }));
 
   return prisma.$transaction(async (tx) => {
-    const automation = await tx.automation.findUnique({
-      where: { id: automationId },
+    const automation = await tx.automation.findFirst({
+      where: { id: automationId, userId },
       select: { id: true },
     });
     if (!automation) {
@@ -117,8 +121,8 @@ export async function updateAutomationWithMaterializedRule(
       })),
     });
 
-    const rule = await tx.rule.findUnique({
-      where: { automationId },
+    const rule = await tx.rule.findFirst({
+      where: { automationId, userId },
       select: { id: true },
     });
     if (!rule) {
@@ -145,8 +149,11 @@ export async function updateAutomationWithMaterializedRule(
   });
 }
 
-export async function deleteAutomationCascade(automationId: number): Promise<void> {
-  await prisma.automation.delete({
-    where: { id: automationId },
+export async function deleteAutomationCascade(userId: number, automationId: number): Promise<void> {
+  const deleted = await prisma.automation.deleteMany({
+    where: { id: automationId, userId },
   });
+  if (deleted.count === 0) {
+    throw new Error("Automatisation introuvable.");
+  }
 }

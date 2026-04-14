@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   const row = await prisma.smtpOutboundSettings.findUnique({
-    where: { id: 1 },
+    where: { userId: user.id },
   });
 
   const dbHost = row?.host?.trim() ?? "";
@@ -83,9 +83,9 @@ export async function PUT(request: Request) {
   }
 
   await prisma.smtpOutboundSettings.upsert({
-    where: { id: 1 },
+    where: { userId: user.id },
     create: {
-      id: 1,
+      userId: user.id,
       host,
       port,
       secure,

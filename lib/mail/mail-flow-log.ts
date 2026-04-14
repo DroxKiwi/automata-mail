@@ -7,6 +7,7 @@ export type MailFlowActor = "next" | "smtp-gateway";
  * Ecrit une ligne de suivi (ne doit pas faire echouer le traitement mail).
  */
 export async function mailFlowLogSafe(params: {
+  userId?: number;
   correlationId: string;
   actor: MailFlowActor;
   step: string;
@@ -20,8 +21,21 @@ export async function mailFlowLogSafe(params: {
         ? `${params.summary.slice(0, 3997)}...`
         : params.summary;
 
+    const fallbackUser =
+      params.userId ??
+      (
+        await prisma.user.findFirst({
+          orderBy: [{ isAdmin: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+          select: { id: true },
+        })
+      )?.id;
+    if (!fallbackUser) {
+      return;
+    }
+
     await prisma.mailFlowEvent.create({
       data: {
+        userId: fallbackUser,
         correlationId: params.correlationId,
         actor: params.actor,
         step: params.step,

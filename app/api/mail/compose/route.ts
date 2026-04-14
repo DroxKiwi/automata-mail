@@ -115,7 +115,7 @@ export async function POST(request: Request) {
   const correlationId = `compose:${randomUUID()}`;
 
   try {
-    await sendForwardMail({
+    await sendForwardMail(user.id, {
       to: toList.length === 1 ? toList[0]! : toList,
       subject: subject || "(sans sujet)",
       text: outText,
@@ -123,6 +123,7 @@ export async function POST(request: Request) {
       attachments: attachments.length > 0 ? attachments : undefined,
     });
     await mailFlowLogSafe({
+      userId: user.id,
       correlationId,
       actor: "next",
       step: "ui_compose_sent",
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Echec envoi.";
     await mailFlowLogSafe({
+      userId: user.id,
       correlationId,
       actor: "next",
       step: "ui_compose_failed",

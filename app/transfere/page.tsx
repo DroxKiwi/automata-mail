@@ -12,7 +12,7 @@ export default async function TransferePage() {
     redirect("/login");
   }
 
-  const messages = await loadTraiteMessages();
+  const messages = await loadTraiteMessages(user.id);
 
   return (
     <DashboardShell

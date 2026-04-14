@@ -19,20 +19,23 @@ export type SendForwardResult =
  * Transfert / envoi sortant : compte cloud actif (Gmail ou Outlook) si connecté ;
  * sinon SMTP sortant configuré en Réglages.
  */
-export async function sendForwardMail(params: ForwardMailParams): Promise<SendForwardResult> {
-  const gmail = await getGmailClientFromDb();
+export async function sendForwardMail(
+  userId: number,
+  params: ForwardMailParams,
+): Promise<SendForwardResult> {
+  const gmail = await getGmailClientFromDb(userId);
   if (gmail) {
     const meta = await sendForwardViaGmail(gmail, params);
     return { channel: "gmail", ...meta };
   }
 
-  const outlookToken = await getOutlookAccessTokenFromDb();
+  const outlookToken = await getOutlookAccessTokenFromDb(userId);
   if (outlookToken) {
     const meta = await sendForwardViaOutlook(outlookToken, params);
     return { channel: "outlook", ...meta };
   }
 
-  const cfg = await getOutboundSmtpConfig();
+  const cfg = await getOutboundSmtpConfig(userId);
   if (!cfg) {
     throw new Error(
       "Aucune methode d'envoi : connecte Gmail ou Outlook (Reglages) ou configure le SMTP sortant (hote + expediteur)."

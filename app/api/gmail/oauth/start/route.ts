@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const base = new URL(request.url);
 
-  const provider = await getActiveCloudProvider();
+  const provider = await getActiveCloudProvider(user.id);
   if (provider !== CloudMailboxProvider.GOOGLE) {
     return NextResponse.redirect(
       new URL("/reglages?gmail_oauth_error=wrong_provider", base.origin)
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
   let oauth2: Awaited<ReturnType<typeof getGmailOAuth2Client>>;
   try {
-    oauth2 = await getGmailOAuth2Client();
+    oauth2 = await getGmailOAuth2Client(user.id);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: msg }, { status: 503 });

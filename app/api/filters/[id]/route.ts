@@ -18,8 +18,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const filter = await prisma.filter.findUnique({
-    where: { id },
+  const filter = await prisma.filter.findFirst({
+    where: { id, userId: user.id },
     include: {
       conditions: { orderBy: { sortOrder: "asc" } },
       inboundAddress: {
@@ -47,8 +47,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const existing = await prisma.filter.findUnique({
-    where: { id },
+  const existing = await prisma.filter.findFirst({
+    where: { id, userId: user.id },
     select: { id: true },
   });
   if (!existing) {
@@ -100,7 +100,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         );
       }
       const addr = await prisma.inboundAddress.findFirst({
-        where: { id: aid, isActive: true },
+        where: { id: aid, userId: user.id, isActive: true },
         select: { id: true },
       });
       if (!addr) {
@@ -123,7 +123,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   await prisma.$transaction(async (tx) => {
     if (conditions !== undefined) {
-      await tx.filterCondition.deleteMany({ where: { filterId: id } });
+      await tx.filterCondition.deleteMany({ where: { filterId: id, filter: { userId: user.id } } });
       if (conditions.length > 0) {
         await tx.filterCondition.createMany({
           data: conditions.map((c, index) => ({
@@ -162,12 +162,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     if (Object.keys(data).length > 0) {
-      await tx.filter.update({ where: { id }, data });
+      await tx.filter.updateMany({ where: { id, userId: user.id }, data });
     }
   });
 
-  const filter = await prisma.filter.findUnique({
-    where: { id },
+  const filter = await prisma.filter.findFirst({
+    where: { id, userId: user.id },
     select: { id: true, name: true, updatedAt: true },
   });
 
@@ -187,7 +187,10 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   try {
-    await prisma.filter.delete({ where: { id } });
+    const deleted = await prisma.filter.deleteMany({ where: { id, userId: user.id } });
+    if (deleted.count === 0) {
+      throw new Error("missing");
+    }
   } catch {
     return NextResponse.json({ error: "Filtre introuvable." }, { status: 404 });
   }

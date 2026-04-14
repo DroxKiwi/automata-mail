@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   const msg = await prisma.inboundMessage.findFirst({
     where: {
       id: messageId,
+      userId: user.id,
       inboundAddress: { isActive: true },
     },
     select: {
@@ -58,13 +59,13 @@ export async function POST(request: Request) {
 
   if (gmailId) {
     const settings = await prisma.googleOAuthSettings.findUnique({
-      where: { id: 1 },
+      where: { userId: user.id },
       select: { gmailMarkReadOnOpen: true },
     });
     if (settings?.gmailMarkReadOnOpen !== true) {
       return NextResponse.json({ skipped: true, reason: "disabled" });
     }
-    const gmail = await getGmailClientFromDb();
+    const gmail = await getGmailClientFromDb(user.id);
     if (!gmail) {
       return NextResponse.json(
         { error: "Gmail non connecte." },
@@ -84,8 +85,8 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
-    await prisma.inboundMessage.update({
-      where: { id: messageId },
+    await prisma.inboundMessage.updateMany({
+      where: { id: messageId, userId: user.id },
       data: { readAt: new Date() },
     });
     return NextResponse.json({ ok: true });
@@ -93,13 +94,13 @@ export async function POST(request: Request) {
 
   if (outlookId) {
     const settings = await prisma.outlookOAuthSettings.findUnique({
-      where: { id: 1 },
+      where: { userId: user.id },
       select: { outlookMarkReadOnOpen: true },
     });
     if (settings?.outlookMarkReadOnOpen !== true) {
       return NextResponse.json({ skipped: true, reason: "disabled" });
     }
-    const token = await getOutlookAccessTokenFromDb();
+    const token = await getOutlookAccessTokenFromDb(user.id);
     if (!token) {
       return NextResponse.json(
         { error: "Outlook non connecte." },
@@ -124,8 +125,8 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
-    await prisma.inboundMessage.update({
-      where: { id: messageId },
+    await prisma.inboundMessage.updateMany({
+      where: { id: messageId, userId: user.id },
       data: { readAt: new Date() },
     });
     return NextResponse.json({ ok: true });

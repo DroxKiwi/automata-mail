@@ -3,6 +3,8 @@
 import { Bot, Loader2, RotateCcw, SendHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { AgentStreamEvent } from "@/lib/assistant/agent-stream-events";
@@ -36,6 +38,10 @@ type ThreadMessage =
 
 const ASSISTANT_THREAD_STORAGE_KEY = "exparta-assistant-thread-v1";
 const ASSISTANT_UI_STORAGE_KEY = "exparta-assistant-ui-v1";
+
+function scopedStorageKey(base: string, scope: string): string {
+  return `${base}:${scope}`;
+}
 
 type AssistantUiPersisted = {
   surfacesVisible: boolean;
@@ -124,24 +130,19 @@ function parseStoredThreadMessages(json: string): ThreadMessage[] | null {
 }
 
 const TOOL_PALETTE_CLASS: Record<string, string> = {
-  violet:
-    "border-violet-400/55 bg-violet-500/15 text-violet-950 dark:border-violet-500/45 dark:bg-violet-500/20 dark:text-violet-100",
-  sky: "border-sky-400/55 bg-sky-500/15 text-sky-950 dark:border-sky-500/45 dark:bg-sky-500/20 dark:text-sky-100",
-  cyan: "border-cyan-400/55 bg-cyan-500/15 text-cyan-950 dark:border-cyan-500/45 dark:bg-cyan-500/20 dark:text-cyan-100",
-  emerald:
-    "border-emerald-400/55 bg-emerald-500/15 text-emerald-950 dark:border-emerald-500/45 dark:bg-emerald-500/20 dark:text-emerald-100",
-  amber:
-    "border-amber-400/55 bg-amber-500/15 text-amber-950 dark:border-amber-500/45 dark:bg-amber-500/20 dark:text-amber-100",
-  orange:
-    "border-orange-400/55 bg-orange-500/15 text-orange-950 dark:border-orange-500/45 dark:bg-orange-500/20 dark:text-orange-100",
-  slate:
-    "border-slate-400/50 bg-slate-500/15 text-slate-900 dark:border-slate-500/40 dark:bg-slate-500/20 dark:text-slate-100",
+  violet: "border-transparent bg-[#6f133f] text-white",
+  sky: "border-transparent bg-[#6f133f] text-white",
+  cyan: "border-transparent bg-[#6f133f] text-white",
+  emerald: "border-transparent bg-[#6f133f] text-white",
+  amber: "border-transparent bg-[#6f133f] text-white",
+  orange: "border-transparent bg-[#6f133f] text-white",
+  slate: "border-transparent bg-[#6f133f] text-white",
 };
 
 function ThreadUserBubble({ content }: { content: string }) {
   return (
     <div className="ollama-buddy-bubble-animate-user flex w-full justify-end">
-      <div className="w-max max-w-full rounded-2xl border border-primary/90 bg-primary px-3.5 py-2.5 text-left shadow-md ring-1 ring-black/10">
+      <div className="w-max max-w-full rounded-2xl border border-transparent bg-primary px-3.5 py-2.5 text-left shadow-md ring-1 ring-black/10 transition-colors hover:border-primary/45">
         <p className="text-xs leading-relaxed whitespace-pre-wrap break-words text-primary-foreground">
           {content}
         </p>
@@ -165,7 +166,7 @@ function ThreadToolTagBubble({
     <div className="ollama-buddy-bubble-animate-assistant flex w-full justify-start">
       <div
         className={cn(
-          "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+          "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm ring-1 ring-black/5 transition-colors hover:border-[#b93a79] dark:ring-white/10",
           paletteClass,
           !ok && "opacity-90 ring-destructive/30",
         )}
@@ -176,8 +177,8 @@ function ThreadToolTagBubble({
           className={cn(
             "shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase",
             ok
-              ? "bg-emerald-600/20 text-emerald-800 dark:text-emerald-200"
-              : "bg-destructive/20 text-destructive",
+              ? "bg-[#8f1f57] text-white"
+              : "bg-[#5d1035] text-white",
           )}
           aria-hidden
         >
@@ -198,7 +199,7 @@ function ThreadThinkingBubble({
   return (
     <div className="ollama-buddy-bubble-animate-assistant flex w-full justify-start">
       <div
-        className="max-w-full rounded-xl border border-border/50 bg-muted/25 px-3 py-2 text-left shadow-sm ring-1 ring-black/[0.03] dark:bg-muted/20 dark:ring-white/[0.06]"
+        className="max-w-full rounded-xl border border-transparent bg-muted/25 px-3 py-2 text-left shadow-sm ring-1 ring-black/[0.03] transition-colors hover:border-border dark:bg-muted/20 dark:ring-white/[0.06]"
         role="note"
         aria-label="Réflexion du modèle"
       >
@@ -239,10 +240,10 @@ function ThreadAssistantBubble({
     <div className="ollama-buddy-bubble-animate-assistant flex w-full justify-start">
       <div
         className={cn(
-          "w-max max-w-full rounded-2xl border px-3.5 py-2.5 text-left shadow-md ring-1",
+          "w-max max-w-full rounded-2xl border px-3.5 py-2.5 text-left shadow-md ring-1 transition-colors",
           isError
             ? "border-destructive/40 bg-[color-mix(in_srgb,var(--destructive)_10%,var(--card))] text-destructive ring-destructive/15"
-            : "border-border bg-card text-foreground ring-black/5 dark:ring-white/10",
+            : "border-transparent bg-card text-foreground ring-black/5 hover:border-border dark:ring-white/10",
         )}
       >
         {streaming && !content ? (
@@ -251,21 +252,22 @@ function ThreadAssistantBubble({
             Réponse…
           </p>
         ) : (
-          <p
+          <div
             className={cn(
-              "text-xs leading-relaxed whitespace-pre-wrap break-words",
+              "text-xs leading-relaxed break-words",
               isError ? "text-destructive" : "text-foreground",
+              "prose prose-xs max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none",
             )}
             role={isError ? "alert" : undefined}
           >
-            {content}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             {streaming ? (
               <span
                 className="ml-px inline-block h-3 w-0.5 translate-y-0.5 animate-pulse bg-primary align-middle"
                 aria-hidden
               />
             ) : null}
-          </p>
+          </div>
         )}
       </div>
     </div>
@@ -333,8 +335,11 @@ function parseAssistantSegments(data: {
 /**
  * Assistant flottant : fil à gauche du buddy, saisie à droite. Fermeture par clic extérieur ou Échap.
  */
-export function OllamaBuddy() {
+export function OllamaBuddy({ userScopeKey }: { userScopeKey?: string }) {
   const router = useRouter();
+  const storageScope = (userScopeKey?.trim().toLowerCase() || "anonymous").replace(/\s+/g, "");
+  const threadStorageKey = scopedStorageKey(ASSISTANT_THREAD_STORAGE_KEY, storageScope);
+  const uiStorageKey = scopedStorageKey(ASSISTANT_UI_STORAGE_KEY, storageScope);
   const [chatOpen, setChatOpen] = useState(false);
   /** false = tout est replié (sauf le bouton) ; true = fil + panneau possibles selon chatOpen. */
   const [surfacesVisible, setSurfacesVisible] = useState(true);
@@ -403,7 +408,7 @@ export function OllamaBuddy() {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(ASSISTANT_UI_STORAGE_KEY);
+      const raw = sessionStorage.getItem(uiStorageKey);
       if (raw) {
         const j = JSON.parse(raw) as Partial<AssistantUiPersisted>;
         if (typeof j.surfacesVisible === "boolean") {
@@ -423,11 +428,11 @@ export function OllamaBuddy() {
     if (!uiRestored) return;
     try {
       const payload: AssistantUiPersisted = { surfacesVisible, chatOpen };
-      sessionStorage.setItem(ASSISTANT_UI_STORAGE_KEY, JSON.stringify(payload));
+      sessionStorage.setItem(uiStorageKey, JSON.stringify(payload));
     } catch {
       /* ignore */
     }
-  }, [uiRestored, surfacesVisible, chatOpen]);
+  }, [uiRestored, surfacesVisible, chatOpen, uiStorageKey]);
 
   useEffect(() => {
     if (!chatOpen) return;
@@ -436,7 +441,7 @@ export function OllamaBuddy() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(ASSISTANT_THREAD_STORAGE_KEY);
+      const raw = localStorage.getItem(threadStorageKey);
       if (raw) {
         const parsed = parseStoredThreadMessages(raw);
         if (parsed && parsed.length > 0) {
@@ -447,23 +452,23 @@ export function OllamaBuddy() {
       /* ignore */
     }
     setThreadHydrated(true);
-  }, []);
+  }, [threadStorageKey]);
 
   useEffect(() => {
     if (!threadHydrated) return;
     try {
       if (messages.length === 0) {
-        localStorage.removeItem(ASSISTANT_THREAD_STORAGE_KEY);
+        localStorage.removeItem(threadStorageKey);
       } else {
         localStorage.setItem(
-          ASSISTANT_THREAD_STORAGE_KEY,
+          threadStorageKey,
           messagesToJsonForStorage(messages),
         );
       }
     } catch {
       /* quota / navigation privée */
     }
-  }, [messages, threadHydrated]);
+  }, [messages, threadHydrated, threadStorageKey]);
 
   useEffect(() => {
     if (!chatOpen) return;
@@ -532,11 +537,11 @@ export function OllamaBuddy() {
     setConfirmError(null);
     setIsSending(false);
     try {
-      localStorage.removeItem(ASSISTANT_THREAD_STORAGE_KEY);
+      localStorage.removeItem(threadStorageKey);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [threadStorageKey]);
 
   const sendDisabled =
     isSending ||
@@ -966,7 +971,7 @@ export function OllamaBuddy() {
         <div className="flex shrink-0 flex-col items-center">
           {showHint ? (
             <div className="ollama-buddy-bubble-animate pointer-events-none mb-1.5 flex justify-center">
-              <div className="max-w-[min(17rem,calc(100vw-7rem))] rounded-2xl border border-border bg-card px-3.5 py-2.5 text-center shadow-md ring-1 ring-black/5 dark:ring-white/10">
+              <div className="max-w-[min(17rem,calc(100vw-7rem))] rounded-2xl border border-transparent bg-card px-3.5 py-2.5 text-center shadow-md ring-1 ring-black/5 transition-colors hover:border-border dark:ring-white/10">
                 <p className="text-xs font-semibold leading-snug text-foreground">
                   Psst… Besoin d&apos;un coup de main ?
                 </p>
@@ -979,7 +984,7 @@ export function OllamaBuddy() {
 
           <Button
             type="button"
-            className="pointer-events-auto h-14 w-14 shrink-0 rounded-full border-2 border-primary/30 bg-primary p-0 text-primary-foreground shadow-lg ring-4 ring-background transition hover:scale-105 hover:bg-primary/90"
+            className="pointer-events-auto h-14 w-14 shrink-0 rounded-full border border-primary/30 bg-primary p-0 text-primary-foreground shadow-lg ring-4 ring-background transition hover:scale-105 hover:bg-primary/90"
             aria-label={
               !surfacesVisible
                 ? "Rouvrir la conversation avec l'assistant Ollama"
@@ -996,7 +1001,7 @@ export function OllamaBuddy() {
           <div
             className={cn(
               chromeMotionClass,
-              "ollama-buddy-chat-bubble-animate pointer-events-auto min-w-0 max-w-[min(22rem,calc(100vw-8rem))] rounded-2xl border border-border bg-card p-3 shadow-md ring-1 ring-black/5 dark:ring-white/10",
+              "ollama-buddy-chat-bubble-animate pointer-events-auto min-w-0 max-w-[min(22rem,calc(100vw-8rem))] rounded-2xl border border-transparent bg-card p-3 shadow-md ring-1 ring-black/5 transition-colors hover:border-border dark:ring-white/10",
             )}
           >
             <p className="text-xs font-semibold text-foreground">Assistant</p>

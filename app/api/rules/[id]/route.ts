@@ -18,8 +18,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const rule = await prisma.rule.findUnique({
-    where: { id },
+  const rule = await prisma.rule.findFirst({
+    where: { id, userId: user.id },
     include: {
       conditions: { orderBy: { id: "asc" } },
       actions: { orderBy: { order: "asc" } },
@@ -51,8 +51,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const existing = await prisma.rule.findUnique({
-    where: { id },
+  const existing = await prisma.rule.findFirst({
+    where: { id, userId: user.id },
     select: { id: true, automationId: true },
   });
   if (!existing) {
@@ -90,7 +90,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.ruleAction.deleteMany({ where: { ruleId: id } });
+    await tx.ruleAction.deleteMany({ where: { ruleId: id, rule: { userId: user.id } } });
     if (actions.length > 0) {
       await tx.ruleAction.createMany({
         data: actions.map((a) => ({
@@ -103,8 +103,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
   });
 
-  const updated = await prisma.rule.findUnique({
-    where: { id },
+  const updated = await prisma.rule.findFirst({
+    where: { id, userId: user.id },
     select: { id: true, name: true, _count: { select: { actions: true } } },
   });
 

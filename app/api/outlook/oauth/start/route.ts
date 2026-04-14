@@ -20,14 +20,14 @@ export async function GET(request: Request) {
 
   const base = new URL(request.url);
 
-  const provider = await getActiveCloudProvider();
+  const provider = await getActiveCloudProvider(user.id);
   if (provider !== CloudMailboxProvider.OUTLOOK) {
     return NextResponse.redirect(
       new URL("/reglages?outlook_oauth_error=wrong_provider", base.origin)
     );
   }
 
-  const cfg = await getOutlookOAuthAppConfigFromDb();
+  const cfg = await getOutlookOAuthAppConfigFromDb(user.id);
   if (!cfg) {
     return NextResponse.redirect(
       new URL("/reglages?outlook_oauth_error=not_configured", base.origin)

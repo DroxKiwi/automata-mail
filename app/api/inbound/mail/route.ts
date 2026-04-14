@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         domain: parts.domain,
         localPart: { equals: parts.localPart, mode: "insensitive" },
       },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
 
     if (!addr) {
@@ -118,6 +118,7 @@ export async function POST(request: Request) {
 
     try {
       const { inboundMessageId } = await processInboundForAddress({
+        userId: addr.userId,
         inboundAddressId: addr.id,
         mailFrom,
         rcptTo: rcptList,

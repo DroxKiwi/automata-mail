@@ -22,8 +22,8 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const automation = await prisma.automation.findUnique({
-    where: { id },
+  const automation = await prisma.automation.findFirst({
+    where: { id, userId: user.id },
     include: {
       filterLinks: {
         orderBy: { sortOrder: "asc" },
@@ -58,8 +58,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "ID invalide." }, { status: 400 });
   }
 
-  const existing = await prisma.automation.findUnique({
-    where: { id },
+  const existing = await prisma.automation.findFirst({
+    where: { id, userId: user.id },
     select: { id: true },
   });
   if (!existing) {
@@ -112,7 +112,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const { ruleId } = await updateAutomationWithMaterializedRule(id, {
+    const { ruleId } = await updateAutomationWithMaterializedRule(user.id, id, {
       name,
       description,
       enabled,
@@ -144,7 +144,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   try {
-    await deleteAutomationCascade(id);
+    await deleteAutomationCascade(user.id, id);
   } catch {
     return NextResponse.json({ error: "Automatisation introuvable." }, { status: 404 });
   }

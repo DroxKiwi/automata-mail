@@ -12,6 +12,7 @@ export async function GET() {
   }
 
   const automations = await prisma.automation.findMany({
+    where: { userId: user.id },
     orderBy: [{ priority: "asc" }, { id: "asc" }],
     include: {
       filterLinks: {
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await createAutomationWithMaterializedRule({
+      userId: user.id,
       name,
       description,
       enabled,

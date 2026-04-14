@@ -33,7 +33,7 @@ function buildRawMime(input: {
 async function main() {
   const passwordHash = await hash("SeedDemo!2026", 12);
 
-  await prisma.user.upsert({
+  const seedUser = await prisma.user.upsert({
     where: { email: "demo.seed@exparta.test" },
     create: {
       email: "demo.seed@exparta.test",
@@ -57,9 +57,14 @@ async function main() {
   for (const a of addressDefs) {
     const row = await prisma.inboundAddress.upsert({
       where: {
-        localPart_domain: { localPart: a.localPart, domain: a.domain },
+        userId_localPart_domain: {
+          userId: seedUser.id,
+          localPart: a.localPart,
+          domain: a.domain,
+        },
       },
       create: {
+        userId: seedUser.id,
         localPart: a.localPart,
         domain: a.domain,
         isActive: true,
@@ -72,7 +77,7 @@ async function main() {
   }
 
   await prisma.inboundMessage.deleteMany({
-    where: { correlationId: { startsWith: SEED_CORRELATION_PREFIX } },
+    where: { userId: seedUser.id, correlationId: { startsWith: SEED_CORRELATION_PREFIX } },
   });
 
   type SeedMsg = {
@@ -219,6 +224,7 @@ async function main() {
 
     const msg = await prisma.inboundMessage.create({
       data: {
+        userId: seedUser.id,
         inboundAddressId,
         correlationId,
         messageIdHeader,

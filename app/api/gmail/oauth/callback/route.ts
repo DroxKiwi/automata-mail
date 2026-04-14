@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login", base.origin));
   }
 
-  const provider = await getActiveCloudProvider();
+  const provider = await getActiveCloudProvider(user.id);
   if (provider !== CloudMailboxProvider.GOOGLE) {
     return NextResponse.redirect(
       new URL("/reglages?gmail_oauth_error=wrong_provider", base.origin)
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 
   let oauth2: Awaited<ReturnType<typeof getGmailOAuth2Client>>;
   try {
-    oauth2 = await getGmailOAuth2Client();
+    oauth2 = await getGmailOAuth2Client(user.id);
   } catch {
     return NextResponse.redirect(
       new URL("/reglages?gmail_oauth_error=not_configured", base.origin)
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
   }
 
   await prisma.googleOAuthSettings.update({
-    where: { id: 1 },
+    where: { userId: user.id },
     data: { refreshToken },
   });
 

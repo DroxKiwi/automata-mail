@@ -73,6 +73,7 @@ function applyRewriteSubject(
  * Évalue les règles actives sur un message déjà enregistré (création MTA ou worker après sync cloud).
  */
 export async function runRulesEngineForInboundMessage(input: {
+  userId: number;
   inboundMessageId: number;
   inboundAddressId: number;
   mailFrom: string;
@@ -81,6 +82,7 @@ export async function runRulesEngineForInboundMessage(input: {
   correlationId: string | null;
 }): Promise<void> {
   const {
+    userId,
     inboundMessageId,
     inboundAddressId,
     mailFrom,
@@ -92,6 +94,7 @@ export async function runRulesEngineForInboundMessage(input: {
 
   const rules = (await prisma.rule.findMany({
     where: {
+      userId,
       enabled: true,
       OR: [{ inboundAddressId: null }, { inboundAddressId }],
     },
@@ -216,7 +219,7 @@ export async function runRulesEngineForInboundMessage(input: {
                   ...automationDetail(rule),
                 },
               });
-              const sendResult = await sendForwardMail({
+              const sendResult = await sendForwardMail(userId, {
                 to,
                 subject: workingSubject,
                 text: workingText || undefined,
@@ -339,7 +342,7 @@ export async function runRulesEngineForInboundMessage(input: {
                   ...automationDetail(rule),
                 },
               });
-              const sendResult = await sendForwardMail({
+              const sendResult = await sendForwardMail(userId, {
                 to: mailFrom,
                 subject: subj,
                 text: replyText.trim() ? replyText : undefined,
@@ -415,6 +418,7 @@ export async function runRulesEngineForInboundMessage(input: {
 }
 
 export async function processInboundForAddress(input: {
+  userId: number;
   inboundAddressId: number;
   mailFrom: string;
   rcptTo: string[];
@@ -423,6 +427,7 @@ export async function processInboundForAddress(input: {
   correlationId: string;
 }): Promise<{ inboundMessageId: number }> {
   const {
+    userId,
     inboundAddressId,
     mailFrom,
     rcptTo,
@@ -434,6 +439,7 @@ export async function processInboundForAddress(input: {
   const message = await prisma.inboundMessage.create({
     data: {
       inboundAddressId,
+      userId,
       correlationId,
       messageIdHeader: parsed.messageIdHeader,
       mailFrom,
@@ -460,6 +466,7 @@ export async function processInboundForAddress(input: {
   }
 
   await mailFlowLogSafe({
+    userId,
     correlationId,
     actor: "next",
     step: "inbound_message_stored",
@@ -473,6 +480,7 @@ export async function processInboundForAddress(input: {
   });
 
   await runRulesEngineForInboundMessage({
+    userId,
     inboundMessageId: message.id,
     inboundAddressId,
     mailFrom,

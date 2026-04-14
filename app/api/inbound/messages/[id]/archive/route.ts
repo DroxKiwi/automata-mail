@@ -42,6 +42,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const existing = await prisma.inboundMessage.findFirst({
     where: {
       id,
+      userId: user.id,
       inboundAddress: { isActive: true },
     },
     select: { id: true, archived: true, correlationId: true, subject: true },
@@ -51,8 +52,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Message introuvable." }, { status: 404 });
   }
 
-  await prisma.inboundMessage.update({
-    where: { id },
+  await prisma.inboundMessage.updateMany({
+    where: { id, userId: user.id },
     data: { archived },
   });
 

@@ -19,10 +19,12 @@ export default async function AutomatePage() {
 
   const [filters, rules] = await Promise.all([
     prisma.filter.findMany({
+      where: { userId: user.id },
       orderBy: [{ priority: "asc" }, { id: "asc" }],
       select: { id: true, name: true },
     }),
     prisma.rule.findMany({
+      where: { userId: user.id },
       orderBy: [{ priority: "asc" }, { id: "asc" }],
       select: {
         id: true,

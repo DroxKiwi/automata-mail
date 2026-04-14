@@ -41,6 +41,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const result = await prisma.inboundMessage.updateMany({
     where: {
       id,
+      userId: user.id,
       inboundAddress: { isActive: true },
     },
     data: { hiddenFromTransferList },

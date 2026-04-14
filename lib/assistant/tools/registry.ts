@@ -48,6 +48,23 @@ export const ASSISTANT_TOOL_REGISTRY: ToolDefinition[] = [
     adminOnly: false,
     risk: "write",
   },
+  {
+    name: "application_detail",
+    summary:
+      "Explore the functional application tree progressively (/, /bdr, /bdr/sendmail, etc.).",
+    parameters:
+      "path (optional string): tree node path. depth (optional integer): child depth to return (default 1).",
+    adminOnly: false,
+    risk: "read",
+  },
+  {
+    name: "application_capabilities",
+    summary:
+      "Return runtime capabilities for the current account (role, active provider, channels, assistant readiness).",
+    parameters: "No arguments.",
+    adminOnly: false,
+    risk: "read",
+  },
 ];
 
 export function toolDefinition(name: string): ToolDefinition | undefined {

@@ -35,17 +35,18 @@ export default async function BoitePage({ searchParams }: BoitePageProps) {
 
   const [total, transferShortcuts, mailbox, googleOAuth, outlookOAuth] =
     await Promise.all([
-      countBoiteMessages(inboxExtras),
+      countBoiteMessages(user.id, inboxExtras),
       prisma.transferShortcut.findMany({
+        where: { userId: user.id },
         orderBy: { createdAt: "asc" },
         select: { id: true, emails: true },
       }),
       prisma.appMailboxSettings.findUnique({
-        where: { id: 1 },
+        where: { userId: user.id },
         select: { activeProvider: true },
       }),
       prisma.googleOAuthSettings.findUnique({
-        where: { id: 1 },
+        where: { userId: user.id },
         select: {
           gmailPollIntervalSeconds: true,
           gmailSyncUnreadOnly: true,
@@ -53,7 +54,7 @@ export default async function BoitePage({ searchParams }: BoitePageProps) {
         },
       }),
       prisma.outlookOAuthSettings.findUnique({
-        where: { id: 1 },
+        where: { userId: user.id },
         select: {
           outlookPollIntervalSeconds: true,
           outlookSyncUnreadOnly: true,
@@ -66,7 +67,7 @@ export default async function BoitePage({ searchParams }: BoitePageProps) {
   const page = Math.min(rawPage, totalPages);
   const skip = (page - 1) * perPage;
 
-  const messages = await loadBoiteMessages({
+  const messages = await loadBoiteMessages(user.id, {
     skip,
     take: perPage,
     extras: inboxExtras,
@@ -129,11 +130,15 @@ export default async function BoitePage({ searchParams }: BoitePageProps) {
       title="Boite de reception"
       userEmail={user.email}
       isAdmin={user.isAdmin}
+      hoverBorders
       headerToolbar={
         <div data-tutorial-target="tutoriel-boite-toolbar">
           <ListPageToolbar
             rangeLabel={rangeLabel}
-            filterSlot={<BoiteInboxFilter unreadOnly={unreadOnly} perPage={perPage} />}
+            filterSlot={
+              <BoiteInboxFilter unreadOnly={unreadOnly} perPage={perPage} hoverBordersOnly />
+            }
+            hoverBordersOnly
             pagination={{
               page,
               totalPages,
@@ -175,6 +180,7 @@ export default async function BoitePage({ searchParams }: BoitePageProps) {
             emptyTitle="Aucun message"
             emptyDescription="Des qu&apos;un mail arrive sur une adresse d&apos;entree (passerelle SMTP + regles), il apparaitra ici."
             listAriaLabel="Messages recus"
+            hoverBordersOnly
             showTransferAction
             transferShortcuts={transferShortcuts}
             showArchiveAction

@@ -1,4 +1,5 @@
 export { getSessionUser } from "./auth-user";
+export { requireSessionUser } from "./require-session-user";
 export { SESSION_COOKIE_NAME } from "./session";
 export { requireAdminApiUser } from "./require-admin";
 export {

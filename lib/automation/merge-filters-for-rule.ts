@@ -13,6 +13,7 @@ export class MergeFiltersError extends Error {
  * Tous les filtres doivent avoir la même portée d’adresse d’entrée (toutes ou une même adresse).
  */
 export async function buildMergedConditionsFromFilterIds(
+  userId: number,
   filterIds: number[]
 ): Promise<{
   inboundAddressId: number | null;
@@ -23,7 +24,7 @@ export async function buildMergedConditionsFromFilterIds(
   }
 
   const filters = await prisma.filter.findMany({
-    where: { id: { in: filterIds } },
+    where: { userId, id: { in: filterIds } },
     include: { conditions: { orderBy: { sortOrder: "asc" } } },
   });
 

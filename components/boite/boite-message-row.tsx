@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 type BoiteMessageRowProps = {
   m: BoiteListMessage;
+  hoverBordersOnly?: boolean;
   /** Bouton archiver (boîte de réception). */
   showArchiveAction?: boolean;
   /** Bouton désarchiver (liste Traité). */
@@ -30,6 +31,7 @@ type BoiteMessageRowProps = {
 
 export function BoiteMessageRow({
   m,
+  hoverBordersOnly = true,
   showArchiveAction = false,
   showUnarchiveAction = false,
   showTransferAction = false,
@@ -59,7 +61,8 @@ export function BoiteMessageRow({
   return (
     <li
       className={cn(
-        "flex min-h-[2.75rem] items-stretch border-b border-border/50 last:border-b-0",
+        "group flex min-h-[2.75rem] items-stretch border-b last:border-b-0 transition-colors",
+        hoverBordersOnly ? "border-b-transparent hover:border-b-border" : "border-b-border/50",
         isRead
           ? "bg-muted/85 dark:bg-muted/70"
           : "bg-sky-50 dark:bg-sky-950/30"
@@ -105,7 +108,8 @@ export function BoiteMessageRow({
 
       <div
         className={cn(
-          "flex shrink-0 items-center gap-0.5 border-l border-border/60 py-1 pr-2 pl-1 sm:gap-1 sm:pr-3",
+          "flex shrink-0 items-center gap-0.5 border-l py-1 pr-2 pl-1 transition-colors sm:gap-1 sm:pr-3",
+          hoverBordersOnly ? "border-l-transparent group-hover:border-l-border" : "border-l-border/60",
           isRead
             ? "bg-muted/80 dark:bg-muted/65"
             : "bg-sky-50/95 dark:bg-sky-950/35"

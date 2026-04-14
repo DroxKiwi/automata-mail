@@ -23,6 +23,8 @@ export function toolTagDisplayMeta(toolName: string): {
       label: "Demande d’archivage",
       palette: "orange",
     },
+    application_detail: { label: "Détail application", palette: "cyan" },
+    application_capabilities: { label: "Capacités runtime", palette: "violet" },
   };
   if (known[name]) {
     return known[name];

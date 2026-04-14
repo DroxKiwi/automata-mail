@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   const row = await prisma.googleOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId: user.id },
   });
 
   return NextResponse.json({
@@ -92,9 +92,9 @@ export async function PUT(request: Request) {
       : "";
 
   await prisma.googleOAuthSettings.upsert({
-    where: { id: 1 },
+    where: { userId: user.id },
     create: {
-      id: 1,
+      userId: user.id,
       clientId,
       redirectUri,
       clientSecret:

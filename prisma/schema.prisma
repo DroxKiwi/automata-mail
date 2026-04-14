@@ -20,19 +20,36 @@ model User {
   isAdmin       Boolean   @default(false)
   sessionToken  String?   @unique
   createdAt     DateTime  @default(now())
+  transferShortcuts TransferShortcut[]
+  mailFlowEvents    MailFlowEvent[]
+  inboundAddresses  InboundAddress[]
+  filters           Filter[]
+  automations       Automation[]
+  rules             Rule[]
+  inboundMessages   InboundMessage[]
+  appMailboxSettings AppMailboxSettings[]
+  outlookOAuthSettings OutlookOAuthSettings[]
+  smtpOutboundSettings SmtpOutboundSettings[]
+  ollamaSettings      OllamaSettings[]
+  googleOAuthSettings GoogleOAuthSettings[]
 }
 
 /// Raccourci de transfert (boite de reception) : une ou plusieurs adresses destinataires.
 model TransferShortcut {
   id        Int      @id @default(autoincrement())
+  userId    Int
   /// Adresses normalisees (minuscules), sans doublon dans le tableau.
   emails    String[]
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 /// Journal partage entre la reception SMTP et Next pour le suivi de bout en bout.
 model MailFlowEvent {
   id            Int      @id @default(autoincrement())
+  userId        Int
   createdAt     DateTime @default(now())
   correlationId String
   actor         String
@@ -40,14 +57,17 @@ model MailFlowEvent {
   direction     String
   summary       String
   detail        Json?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([correlationId])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 /// Adresse de reception (RCPT SMTP cible). Espace mail unique pour toute l'application.
 model InboundAddress {
   id         Int       @id @default(autoincrement())
+  userId     Int
   localPart  String
   domain     String
   isActive   Boolean   @default(true)
@@ -56,13 +76,16 @@ model InboundAddress {
   messages   InboundMessage[]
   rules      Rule[]
   filters    Filter[]
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([localPart, domain])
+  @@unique([userId, localPart, domain])
+  @@index([userId, isActive])
 }
 
 /// Filtre réutilisable : ensemble de conditions (sans actions). Branché en règle dans Automate.
 model Filter {
   id               Int               @id @default(autoincrement())
+  userId           Int
   inboundAddressId Int?
   name             String
   /// Note optionnelle pour l’utilisateur (non utilisée par le moteur).
@@ -74,7 +97,9 @@ model Filter {
   inboundAddress   InboundAddress?   @relation(fields: [inboundAddressId], references: [id], onDelete: SetNull)
   conditions       FilterCondition[]
   automationLinks AutomationOnFilter[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, enabled, priority])
   @@index([enabled, priority])
   @@index([inboundAddressId])
 }
@@ -82,6 +107,7 @@ model Filter {
 /// Automatisation : un ou plusieurs filtres (ET entre filtres) puis actions matérialisées dans une Rule.
 model Automation {
   id               Int                   @id @default(autoincrement())
+  userId           Int
   name             String
   description      String?
   enabled          Boolean               @default(true)
@@ -92,7 +118,9 @@ model Automation {
   filterLinks AutomationOnFilter[]
   /// Règle exécutée par le moteur (conditions = fusion des filtres).
   rule        Rule?
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, enabled, priority])
   @@index([enabled, priority])
 }
 
@@ -126,6 +154,7 @@ model FilterCondition {
 /// Message recu et persiste (MIME brut + extrait texte/HTML + en-tetes). Alimente la boite de reception.
 model InboundMessage {
   id                Int                @id @default(autoincrement())
+  userId            Int
   inboundAddressId  Int
   /// Identifiant de trace partage avec MailFlowEvent (meme valeur que le flux MTA vers l API).
   correlationId     String?
@@ -143,9 +172,9 @@ model InboundMessage {
   /// Message deplace dans l onglet Archive (hors boite de reception).
   archived          Boolean            @default(false)
   /// Si import Gmail API : id message Google (deduplication, pas de reimport).
-  gmailMessageId    String?            @unique
+  gmailMessageId    String?
   /// Si import Microsoft Graph : id message Outlook / Graph (deduplication).
-  outlookMessageId  String?            @unique
+  outlookMessageId  String?
   /// Masque l’entrée dans l’onglet Transféré (action utilisateur « retirer de la liste »).
   hiddenFromTransferList Boolean       @default(false)
   /// Quand le moteur de règles a fini d’évaluer ce message (MTA, import cloud via worker, etc.).
@@ -153,7 +182,12 @@ model InboundMessage {
   inboundAddress    InboundAddress     @relation(fields: [inboundAddressId], references: [id], onDelete: Cascade)
   attachments       InboundAttachment[]
   actionLogs        MessageActionLog[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, gmailMessageId])
+  @@unique([userId, outlookMessageId])
+  @@index([userId, receivedAt])
+  @@index([userId, archived, receivedAt])
   @@index([inboundAddressId, receivedAt])
   @@index([inboundAddressId, archived, receivedAt])
   @@index([messageIdHeader])
@@ -177,6 +211,7 @@ model InboundAttachment {
 
 model Rule {
   id               Int              @id @default(autoincrement())
+  userId           Int
   inboundAddressId Int?
   name             String
   enabled          Boolean          @default(true)
@@ -191,7 +226,9 @@ model Rule {
   conditions       RuleCondition[]
   actions          RuleAction[]
   actionLogs       MessageActionLog[]
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, enabled, priority])
   @@index([enabled, priority])
   @@index([inboundAddressId])
 }
@@ -282,14 +319,19 @@ enum CloudMailboxProvider {
 
 /// Singleton id = 1 : quel connecteur cloud est utilisé pour la boîte.
 model AppMailboxSettings {
-  id             Int                   @id @default(1)
+  id             Int                   @id @default(autoincrement())
+  userId         Int
   activeProvider CloudMailboxProvider    @default(NONE)
   updatedAt      DateTime              @updatedAt
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }
 
 /// Identifiants OAuth Microsoft (Graph Mail), singleton id = 1.
 model OutlookOAuthSettings {
-  id           Int      @id @default(1)
+  id           Int      @id @default(autoincrement())
+  userId       Int
   clientId     String   @default("")
   clientSecret String?
   redirectUri  String   @default("")
@@ -301,11 +343,15 @@ model OutlookOAuthSettings {
   outlookSyncUnreadOnly      Boolean @default(true)
   outlookMarkReadOnOpen      Boolean @default(false)
   updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }
 
 /// Configuration SMTP sortante (singleton id = 1), éditée depuis les Réglages.
 model SmtpOutboundSettings {
-  id           Int      @id @default(1)
+  id           Int      @id @default(autoincrement())
+  userId       Int
   host         String   @default("")
   port         Int      @default(587)
   secure       Boolean  @default(false)
@@ -313,11 +359,15 @@ model SmtpOutboundSettings {
   authPassword String?
   fromAddress  String   @default("")
   updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }
 
 /// Connexion à un serveur Ollama distant (singleton id = 1), éditée depuis les Réglages.
 model OllamaSettings {
-  id        Int      @id @default(1)
+  id        Int      @id @default(autoincrement())
+  userId    Int
   /// URL de base (ex. https://ollama.example.com), sans slash final recommandé.
   baseUrl   String   @default("")
   /// Valeur de l’en-tête X-API-Key si le proxy l’exige.
@@ -332,11 +382,15 @@ model OllamaSettings {
   assistantTopP            Float   @default(0.95)
   assistantTopK            Int     @default(64)
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }
 
 /// Identifiants OAuth Google (Gmail API), singleton id = 1, édités depuis les Réglages.
 model GoogleOAuthSettings {
-  id           Int      @id @default(1)
+  id           Int      @id @default(autoincrement())
+  userId       Int
   clientId     String   @default("")
   clientSecret String?
   redirectUri  String   @default("")
@@ -348,4 +402,7 @@ model GoogleOAuthSettings {
   /// Si true, ouvrir un message importé depuis Gmail le marque lu côté Google et en base (readAt).
   gmailMarkReadOnOpen      Boolean @default(false)
   updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
 }

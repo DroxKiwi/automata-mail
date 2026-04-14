@@ -44,18 +44,24 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const existing = await prisma.transferShortcut.findFirst({
-    where: { id },
+    where: { id, userId: user.id },
     select: { id: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Introuvable." }, { status: 404 });
   }
 
-  const row = await prisma.transferShortcut.update({
-    where: { id },
+  await prisma.transferShortcut.updateMany({
+    where: { id, userId: user.id },
     data: { emails },
+  });
+  const row = await prisma.transferShortcut.findFirst({
+    where: { id, userId: user.id },
     select: { id: true, emails: true },
   });
+  if (!row) {
+    return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+  }
   return NextResponse.json({ shortcut: row });
 }
 
@@ -72,7 +78,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   const result = await prisma.transferShortcut.deleteMany({
-    where: { id },
+    where: { id, userId: user.id },
   });
 
   if (result.count === 0) {

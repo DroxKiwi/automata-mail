@@ -36,8 +36,8 @@ export async function POST(request: Request) {
   const hasFilterId = Number.isFinite(filterIdNum) && filterIdNum >= 1;
 
   if (hasFilterId) {
-    const filter = await prisma.filter.findUnique({
-      where: { id: filterIdNum },
+    const filter = await prisma.filter.findFirst({
+      where: { id: filterIdNum, userId: user.id },
       include: { conditions: { orderBy: { sortOrder: "asc" } } },
     });
     if (!filter) {
@@ -91,6 +91,7 @@ export async function POST(request: Request) {
 
     const rule = await prisma.rule.create({
       data: {
+        userId: user.id,
         inboundAddressId: filter.inboundAddressId,
         name,
         enabled,
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
     }
     inboundAddressId = id;
     const addr = await prisma.inboundAddress.findFirst({
-      where: { id, isActive: true },
+      where: { id, userId: user.id, isActive: true },
       select: { id: true },
     });
     if (!addr) {
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
 
   const rule = await prisma.rule.create({
     data: {
+      userId: user.id,
       inboundAddressId,
       name,
       enabled,

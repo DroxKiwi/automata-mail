@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const gmail = await getGmailClientFromDb();
+  const gmail = await getGmailClientFromDb(user.id);
   if (!gmail) {
     return NextResponse.json(
       {

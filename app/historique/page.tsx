@@ -89,11 +89,11 @@ export default async function HistoriquePage({ searchParams }: HistoriquePagePro
   const { page: rawPage, perPage, category, automationId } =
     parseHistoriqueListQuery(sp);
 
-  const where = mailHistoryPrismaWhere(category, automationId);
+  const where = { ...mailHistoryPrismaWhere(category, automationId), userId: user.id };
 
   const [automationTabs, total] = await Promise.all([
     prisma.automation.findMany({
-      where: { enabled: true },
+      where: { userId: user.id, enabled: true },
       orderBy: [{ priority: "asc" }, { id: "asc" }],
       select: { id: true, name: true },
     }),

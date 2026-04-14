@@ -9,7 +9,7 @@ export async function POST() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const cfg = await getOutboundSmtpConfig();
+  const cfg = await getOutboundSmtpConfig(user.id);
   if (!cfg) {
     return NextResponse.json(
       {

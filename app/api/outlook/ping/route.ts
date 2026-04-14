@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const token = await getOutlookAccessTokenFromDb();
+  const token = await getOutlookAccessTokenFromDb(user.id);
   if (!token) {
     return NextResponse.json(
       {

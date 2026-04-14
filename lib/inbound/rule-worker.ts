@@ -33,6 +33,7 @@ export async function runRulesForPendingInboundMessages(options?: {
     take: limit,
     select: {
       id: true,
+      userId: true,
       inboundAddressId: true,
       mailFrom: true,
       rawMime: true,
@@ -61,6 +62,7 @@ export async function runRulesForPendingInboundMessages(options?: {
       };
 
       await runRulesEngineForInboundMessage({
+        userId: row.userId,
         inboundMessageId: row.id,
         inboundAddressId: row.inboundAddressId,
         mailFrom: row.mailFrom,

@@ -46,7 +46,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const shortcut = await prisma.transferShortcut.findFirst({
-    where: { id: shortcutIdRaw },
+    where: { id: shortcutIdRaw, userId: user.id },
     select: { id: true, emails: true },
   });
 
@@ -57,6 +57,7 @@ export async function POST(request: Request, context: RouteContext) {
   const message = await prisma.inboundMessage.findFirst({
     where: {
       id: messageId,
+      userId: user.id,
       inboundAddress: { isActive: true },
     },
     select: {
@@ -79,7 +80,7 @@ export async function POST(request: Request, context: RouteContext) {
     `shortcut-forward:${message.id}:${randomUUID()}`;
 
   try {
-    const sendResult = await sendForwardMail({
+    const sendResult = await sendForwardMail(user.id, {
       to: toList,
       subject: message.subject?.trim() || "(sans sujet)",
       text: message.textBody ?? undefined,
@@ -125,8 +126,8 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
 
-    await prisma.inboundMessage.update({
-      where: { id: message.id },
+    await prisma.inboundMessage.updateMany({
+      where: { id: message.id, userId: user.id },
       data: { archived: true },
     });
 

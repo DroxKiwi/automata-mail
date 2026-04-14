@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const addr = await prisma.inboundAddress.findFirst({
-    where: { isActive: true },
+    where: { userId: user.id, isActive: true },
     orderBy: { id: "asc" },
   });
 

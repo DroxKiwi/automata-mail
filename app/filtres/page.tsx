@@ -19,11 +19,12 @@ export default async function FiltresPage() {
 
   const [addresses, filters] = await Promise.all([
     prisma.inboundAddress.findMany({
-      where: { isActive: true },
+      where: { userId: user.id, isActive: true },
       orderBy: { createdAt: "asc" },
       select: { id: true, localPart: true, domain: true },
     }),
     prisma.filter.findMany({
+      where: { userId: user.id },
       orderBy: [{ priority: "asc" }, { id: "asc" }],
       select: {
         id: true,

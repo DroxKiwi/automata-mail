@@ -14,7 +14,7 @@ export async function POST() {
     return NextResponse.json({ error: "Non authentifie." }, { status: 401 });
   }
 
-  const result = await runCloudInboxSync();
+  const result = await runCloudInboxSync(user.id);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 503 });
   }

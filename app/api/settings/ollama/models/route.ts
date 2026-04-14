@@ -18,7 +18,7 @@ export async function GET() {
   }
 
   try {
-    const models = await fetchOllamaModelNames();
+    const models = await fetchOllamaModelNames(user.id);
     return NextResponse.json({ models });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

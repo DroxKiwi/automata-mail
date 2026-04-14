@@ -6,14 +6,14 @@ import { prisma } from "@/lib/db/prisma";
 export const OUTLOOK_OAUTH_SCOPE =
   "offline_access Mail.ReadWrite Mail.Send User.Read";
 
-export async function getOutlookOAuthAppConfigFromDb(): Promise<{
+export async function getOutlookOAuthAppConfigFromDb(userId: number): Promise<{
   clientId: string;
   clientSecret: string;
   redirectUri: string;
   tenantId: string;
 } | null> {
   const row = await prisma.outlookOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
   });
   if (!row) {
     return null;
@@ -74,13 +74,13 @@ export async function exchangeOutlookAuthCodeForTokens(input: {
  * Rafraîchit un access token ; renvoie null si Outlook n’est pas le fournisseur actif
  * ou si la configuration / le refresh token manquent.
  */
-export async function getOutlookAccessTokenFromDb(): Promise<string | null> {
-  const provider = await getActiveCloudProvider();
+export async function getOutlookAccessTokenFromDb(userId: number): Promise<string | null> {
+  const provider = await getActiveCloudProvider(userId);
   if (provider !== CloudMailboxProvider.OUTLOOK) {
     return null;
   }
   const row = await prisma.outlookOAuthSettings.findUnique({
-    where: { id: 1 },
+    where: { userId },
   });
   if (!row) {
     return null;
